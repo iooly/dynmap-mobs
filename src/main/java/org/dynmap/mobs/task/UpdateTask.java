@@ -1,6 +1,7 @@
 package org.dynmap.mobs.task;
 
 import org.bukkit.Location;
+import org.bukkit.Server;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.LivingEntity;
@@ -17,6 +18,7 @@ public class UpdateTask implements Runnable {
     protected final MobGroup mobGroup;
     protected final DynmapMobsPlugin plugin;
     private final String singleMakerPrefix;
+    private final Server server;
 
     private Map<Integer, Marker> newmap = new HashMap<Integer, Marker>(); /* Build new map */
     private ArrayList<World> worldsToDo = null;
@@ -35,6 +37,7 @@ public class UpdateTask implements Runnable {
     public UpdateTask(DynmapMobsPlugin plugin, MobGroup mobGroup) {
         this.mobGroup = mobGroup;
         this.plugin = plugin;
+        server = plugin.getServer();
         gethandle = plugin.getGethandle();
         singleMakerPrefix = mobGroup.getSingleMakerPrefix();
     }
@@ -45,7 +48,7 @@ public class UpdateTask implements Runnable {
             return;
         }
         if (worldsToDo == null) {
-            worldsToDo = new ArrayList<World>(plugin.getServer().getWorlds());
+            worldsToDo = new ArrayList<World>(server.getWorlds());
         }
         updateMobsToDo();
 
@@ -72,11 +75,9 @@ public class UpdateTask implements Runnable {
             if (data == null) {
                 continue;
             }
-            try {
-                putOnTheMap(le, data);
-            } finally {
-                Utils.recycleMarkData(data);
-            }
+
+            PutOnMapTask task = new PutOnMapTask(data, le);
+            server.getScheduler().scheduleSyncDelayedTask(plugin, task, 0);
         }
     }
 
@@ -166,6 +167,15 @@ public class UpdateTask implements Runnable {
         return idx;
     }
 
+    private void runNext() {
+        server.getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {
+            @Override
+            public void run() {
+                new Thread(new UpdateTask(plugin, mobGroup)).start();
+            }
+        }, mobGroup.getUpdatePeriod());
+    }
+
     private void updateMobsToDo() {
         while (mobsToDo == null) {
             if (worldsToDo.isEmpty()) {
@@ -176,7 +186,7 @@ public class UpdateTask implements Runnable {
                 // And replace with new map
                 mobicons = newmap;
                 // Schedule next run
-                plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, new UpdateTask(plugin, mobGroup), mobGroup.getUpdatePeriod());
+                runNext();
                 return;
             } else {
                 curWorld = worldsToDo.remove(0); // Get next world
@@ -185,6 +195,25 @@ public class UpdateTask implements Runnable {
                 if (mobsToDo != null && mobsToDo.isEmpty()) {
                     mobsToDo = null;
                 }
+            }
+        }
+    }
+
+    private class PutOnMapTask implements Runnable {
+        private final MarkerData data;
+        private final LivingEntity le;
+
+        private PutOnMapTask(MarkerData data, LivingEntity le) {
+            this.data = data;
+            this.le = le;
+        }
+
+        @Override
+        public void run() {
+            try {
+                putOnTheMap(le, data);
+            } finally {
+                Utils.recycleMarkData(data);
             }
         }
     }
