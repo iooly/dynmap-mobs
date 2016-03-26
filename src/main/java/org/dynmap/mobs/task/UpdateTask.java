@@ -3,7 +3,6 @@ package org.dynmap.mobs.task;
 import org.bukkit.Location;
 import org.bukkit.Server;
 import org.bukkit.World;
-import org.bukkit.block.Block;
 import org.bukkit.entity.LivingEntity;
 import org.dynmap.markers.Marker;
 import org.dynmap.mobs.*;
@@ -116,6 +115,10 @@ public abstract class UpdateTask implements Runnable {
 
                 result = fillMarkData(le, data);
                 if (!result) {
+                    if (Utils.DEBUG) {
+                        logger.log(Level.INFO, "fill marker data fail, continue....");
+                    }
+
                     continue;
                 }
                 server.getScheduler().scheduleSyncDelayedTask(plugin, new PutOnMapTask(data), 0);
@@ -141,24 +144,23 @@ public abstract class UpdateTask implements Runnable {
         final int entryId = data.entryId;
         final String label = data.label;
         final String worldName = data.worldName;
-        final double x = data.posX;
 
         Marker m = getCachedMarker(entryId);
         if (m == null) { /* Not found?  Need new one */
-            if (Utils.DEBUG) {
-                logger.log(Level.INFO, "not in the cache, create new one: " + label);
-            }
             m = mobGroup.getMarkerSet().createMarker(singleMakerPrefix + entryId, label, worldName, data.posX, data.posY, data.posZ, data.icon, false);
+            if (Utils.DEBUG) {
+                logger.log(Level.INFO, "not in the cache, create new one: " + m);
+            }
         } else {  /* Else, update position if needed */
             if (Utils.DEBUG) {
-                logger.log(Level.INFO, "in the cache, use cached: " + label);
+                logger.log(Level.INFO, "in the cache, use cached: " + m);
             }
             m.setLocation(worldName, data.posX, data.posY, data.posZ);
             m.setLabel(label);
             m.setMarkerIcon(data.icon);
         }
         if (m != null) {
-            cacheMaker(entryId, m);
+            cacheMarker(entryId, m);
         }
     }
 
@@ -166,22 +168,23 @@ public abstract class UpdateTask implements Runnable {
         data.worldName = curWorld.getName();
         data.entryId = le.getEntityId();
 
-        Location loc = le.getLocation();
-        Block blk = null;
 
-        if (hideifshadow < 15) {
-            blk = loc.getBlock();
-            if (blk.getLightLevel() <= hideifshadow) {
-                return false;
-            }
-        }
-        if (hideifundercover < 15) {
-            if (blk == null) blk = loc.getBlock();
-            if (blk.getLightFromSky() <= hideifundercover) {
-                return false;
-            }
-        }
+//        Block blk = null;
+
+//        if (hideifshadow < 15) {
+//            blk = loc.getBlock();
+//            if (blk.getLightLevel() <= hideifshadow) {
+//                return false;
+//            }
+//        }
+//        if (hideifundercover < 15) {
+//            if (blk == null) blk = loc.getBlock();
+//            if (blk.getLightFromSky() <= hideifundercover) {
+//                return false;
+//            }
+//        }
         /* See if we already have marker */
+        Location loc = le.getLocation();
         double x = Math.round(loc.getX() / res) * res;
         double y = Math.round(loc.getY() / res) * res;
         double z = Math.round(loc.getZ() / res) * res;
@@ -239,7 +242,7 @@ public abstract class UpdateTask implements Runnable {
             if (worldsToDo.isEmpty()) {
                 // And replace with new map
                 worldsToDo = null;
-                clearMakerCache();
+                clearMarkerCacheIfNeeded();
                 // Schedule next run
                 return false;
             } else {
@@ -254,7 +257,10 @@ public abstract class UpdateTask implements Runnable {
         return true;
     }
 
-    private void cacheMaker(int id, Marker marker) {
+    private void cacheMarker(int id, Marker marker) {
+        if (Utils.DEBUG) {
+            logger.log(Level.INFO, "cache marker: [" + id + "] " + marker );
+        }
         synchronized (markerCache) {
             Marker older = markerCache.get(id);
             if (older != null && older != marker) {
@@ -270,17 +276,22 @@ public abstract class UpdateTask implements Runnable {
         }
     }
 
-    private void clearMakerCache() {
+    private void clearMarkerCacheIfNeeded() {
+        if (Utils.DEBUG) {
+            logger.log(Level.INFO,"clearMarkerCache .......");
+        }
         synchronized (markerCache) {
             int size = markerCache.size();
-            Marker marker;
-            for (int i = 0; i < size; i++) {
-                marker = markerCache.get(i);
-                if (marker != null) {
-                    marker.deleteMarker();
+            if (size > 200) {
+                Marker marker;
+                for (int i = 0; i < size; i++) {
+                    marker = markerCache.valueAt(i);
+                    if (marker != null) {
+                        marker.deleteMarker();
+                    }
                 }
+                markerCache.clear();
             }
-            markerCache.clear();
         }
     }
 

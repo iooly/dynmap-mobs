@@ -11,7 +11,7 @@ import java.util.concurrent.Executors;
 
 public class Utils {
 
-    public static final boolean DEBUG = false;
+    public static final boolean DEBUG = true;
 
     public static final ExecutorService THREAD_POOL = Executors.newFixedThreadPool(10);
 
