@@ -16,6 +16,7 @@ import java.util.Map;
 public class UpdateTask implements Runnable {
     protected final MobGroup mobGroup;
     protected final DynmapMobsPlugin plugin;
+    private final String singleMakerPrefix;
 
     private Map<Integer, Marker> newmap = new HashMap<Integer, Marker>(); /* Build new map */
     private ArrayList<World> worldsToDo = null;
@@ -35,6 +36,7 @@ public class UpdateTask implements Runnable {
         this.mobGroup = mobGroup;
         this.plugin = plugin;
         gethandle = plugin.getGethandle();
+        singleMakerPrefix = mobGroup.getSingleMakerPrefix();
     }
 
     @Override
@@ -115,7 +117,7 @@ public class UpdateTask implements Runnable {
             label = label + " [" + (int) x + "," + (int) y + "," + (int) z + "]";
         }
         if (m == null) { /* Not found?  Need new one */
-            m = mobGroup.getMarkerSet().createMarker("mob" + le.getEntityId(), label, curWorld.getName(), x, y, z, data.icon, false);
+            m = mobGroup.getMarkerSet().createMarker(singleMakerPrefix + le.getEntityId(), label, curWorld.getName(), x, y, z, data.icon, false);
         } else {  /* Else, update position if needed */
             m.setLocation(curWorld.getName(), x, y, z);
             m.setLabel(label);

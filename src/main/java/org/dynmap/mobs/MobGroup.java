@@ -38,7 +38,7 @@ public class MobGroup {
 
     public void update() {
         StaticMobConfig staticConfig = mobConfig.staticConfig;
-        boolean tinyIcons = config.getBoolean(staticConfig.tinyIconsKey, false);
+        tinyIcons = config.getBoolean(staticConfig.tinyIconsKey, false);
         int enabledSize = 0;
         int allSize = mobConfig.size();
         MarkerIcon icon;
@@ -78,30 +78,31 @@ public class MobGroup {
             }
         }
         if (mobs.length > 0) {
-            MarkerSet set = markerapi.getMarkerSet("mobs.markerset");
-            if (set == null)
-                set = markerapi.createMarkerSet("mobs.markerset", config.getString("layer.name", "Mobs"), null, false);
-            else
-                set.setMarkerSetLabel(config.getString("layer.name", "Mobs"));
+            MarkerSet set = markerapi.getMarkerSet(staticConfig.markerSetKey);
+            if (set == null) {
+                set = markerapi.createMarkerSet(staticConfig.markerSetKey, config.getString(staticConfig.layerNameKey, staticConfig.defaultLayerName), null, false);
+            } else {
+                set.setMarkerSetLabel(config.getString(staticConfig.layerNameKey, staticConfig.defaultLayerName));
+            }
             if (set == null) {
                 severe("Error creating marker set");
                 return;
             }
-            set.setLayerPriority(config.getInt("layer.layerprio", 10));
-            set.setHideByDefault(config.getBoolean("layer.hidebydefault", false));
-            int minzoom = config.getInt("layer.minzoom", 0);
+            set.setLayerPriority(config.getInt(staticConfig.layerPriorityKey, 10));
+            set.setHideByDefault(config.getBoolean(staticConfig.hideByDefaultKey, false));
+            int minzoom = config.getInt(staticConfig.minZoomKey, 0);
             if (minzoom > 0) { /* Don't call if non-default - lets us work with pre-0.28 dynmap */
                 set.setMinZoom(minzoom);
             }
             markerSet = set;
-            tinyIcons = config.getBoolean("layer.tinyicons", false);
-            noLabels = config.getBoolean("layer.nolabels", false);
-            incCoord = config.getBoolean("layer.inc-coord", false);
+            tinyIcons = config.getBoolean(staticConfig.tinyIconsKey, false);
+            noLabels = config.getBoolean(staticConfig.noLabelsKey, false);
+            incCoord = config.getBoolean(staticConfig.incCoordKey, false);
             /* Set up update job - based on period */
-            double per = config.getDouble("update.period", 5.0);
+            double per = config.getDouble(staticConfig.updatePeriodKey, 5.0);
             if (per < 2.0) per = 2.0;
             updatePeriod = (long) (per * 20.0);
-            updatesPerTick = config.getInt("update.mobs-per-tick", 20);
+            updatesPerTick = config.getInt(staticConfig.updatesPerTickKey, 20);
             info("Enable layer for mobs");
         } else {
             info("Layer for mobs disabled");
@@ -156,6 +157,10 @@ public class MobGroup {
     public MobMapping getMobAt(int index) {
         checkIndex(index);
         return mobs[index];
+    }
+
+    public String getSingleMakerPrefix() {
+        return mobConfig.staticConfig.singleMakerKeyPrefix;
     }
 
     private void checkIndex(int index) {

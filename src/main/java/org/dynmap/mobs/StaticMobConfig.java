@@ -13,6 +13,7 @@ public class StaticMobConfig {
     public final String incCoordKey;
     public final String updatePeriodKey;
     public final String updatesPerTickKey;
+    public final String singleMakerKeyPrefix;
 
     public StaticMobConfig(String tinyIconsKey,
                            String markerSetKey,
@@ -24,7 +25,8 @@ public class StaticMobConfig {
                            String noLabelsKey,
                            String incCoordKey,
                            String updatePeriodKey,
-                           String updatesPerTickKey) {
+                           String updatesPerTickKey,
+                           String singleMakerKeyPrefix) {
         this.tinyIconsKey = tinyIconsKey;
         this.markerSetKey = markerSetKey;
         this.layerNameKey = layerNameKey;
@@ -36,6 +38,7 @@ public class StaticMobConfig {
         this.incCoordKey = incCoordKey;
         this.updatePeriodKey = updatePeriodKey;
         this.updatesPerTickKey = updatesPerTickKey;
+        this.singleMakerKeyPrefix = singleMakerKeyPrefix;
     }
 
 

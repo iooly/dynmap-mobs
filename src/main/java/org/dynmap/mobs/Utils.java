@@ -104,7 +104,8 @@ public class Utils {
                 "layer.nolabels",
                 "layer.inc-coord",
                 "update.period",
-                "update.mobs-per-tick"
+                "update.mobs-per-tick",
+                "mob"
         ));
 
         CONFIG_VEHICLES = new MobConfig("vehicles.", new MobMapping[]{
@@ -133,7 +134,8 @@ public class Utils {
                 "vehiclelayer.nolabels",
                 "vehiclelayer.inc-coord",
                 "update.vehicleperiod",
-                "update.vehicles-per-tick"
+                "update.vehicles-per-tick",
+                "vehicle"
         ));
 
         MARKER_DATA_POOL = new Pools.SynchronizedPool<MarkerData>(50);
