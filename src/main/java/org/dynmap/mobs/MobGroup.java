@@ -118,7 +118,9 @@ public class MobGroup {
     }
 
     public void deleteMarkerSet() {
-        markerSet.deleteMarkerSet();
+        if (markerSet != null) {
+            markerSet.deleteMarkerSet();
+        }
         markerSet = null;
     }
 
