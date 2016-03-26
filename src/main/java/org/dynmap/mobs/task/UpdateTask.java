@@ -247,8 +247,20 @@ public abstract class UpdateTask implements Runnable {
                 return false;
             } else {
                 curWorld = worldsToDo.remove(0); // Get next world
-                synchronized (UpdateTask.class) {
-                    mobsToDo = curWorld.getLivingEntities();     // Get living entities
+                server.getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {
+                    @Override
+                    public void run() {
+                        mobsToDo = curWorld.getLivingEntities();     // Get living entities
+                        synchronized (UpdateTask.this) {
+                            UpdateTask.this.notifyAll();
+                        }
+                    }
+                }, 0);
+                synchronized (UpdateTask.this) {
+                    try {
+                        UpdateTask.this.wait();
+                    } catch (InterruptedException e) {
+                    }
                 }
                 mobIndex = 0;
                 if (mobsToDo != null && mobsToDo.isEmpty()) {
@@ -258,6 +270,8 @@ public abstract class UpdateTask implements Runnable {
         }
         return true;
     }
+
+
 
     private void cacheMarker(int id, Marker marker) {
         if (Utils.DEBUG) {
