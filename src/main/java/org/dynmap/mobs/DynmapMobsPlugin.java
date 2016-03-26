@@ -133,10 +133,8 @@ public class DynmapMobsPlugin extends JavaPlugin {
         mMobsGroup.update();
         mVehiclesGroupl.update();
 
-        getServer().getScheduler()
-                .scheduleSyncDelayedTask(this, new MobUpdateTask(this, mMobsGroup), mMobsGroup.getUpdatePeriod());
-        getServer().getScheduler()
-                .scheduleSyncDelayedTask(this, new VehicleUpdateTask(this, mMobsGroup), mMobsGroup.getUpdatePeriod());
+        new Thread( new MobUpdateTask(this, mMobsGroup)).start();
+        new Thread( new VehicleUpdateTask(this, mMobsGroup)).start();
 
         info("version " + this.getDescription().getVersion() + " is activated");
     }
