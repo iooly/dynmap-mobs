@@ -12,22 +12,23 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-public class UpdateTask implements Runnable {
+public abstract class UpdateTask implements Runnable {
+
     protected final MobGroup mobGroup;
     protected final DynmapMobsPlugin plugin;
     private final String singleMakerPrefix;
     private final Server server;
+    private final Logger logger;
 
-    private Map<Integer, Marker> newmap = new HashMap<Integer, Marker>(); /* Build new map */
     private ArrayList<World> worldsToDo = null;
     private List<LivingEntity> mobsToDo = null;
     private int mobIndex = 0;
     private World curWorld = null;
-    private Map<Integer, Marker> mobicons = new HashMap<Integer, Marker>();
+    private final SparseArray<Marker> markerCache = new SparseArray<Marker>();
     private Method gethandle;
-
     protected int hideifshadow;
     protected int hideifundercover;
     protected double res;
@@ -40,57 +41,130 @@ public class UpdateTask implements Runnable {
         server = plugin.getServer();
         gethandle = plugin.getGethandle();
         singleMakerPrefix = mobGroup.getSingleMakerPrefix();
+        logger = plugin.getLogger();
     }
 
     @Override
     public final void run() {
-        if (plugin.isStop() | mobGroup.getSize() <= 0 || mobGroup.getMarkerSet() == null) {
-            return;
+        if (Utils.DEBUG) {
+            logger.log(Level.INFO, "start run | Thread: [" + Thread.currentThread().getName() + "] id: " + Thread.currentThread().getId());
         }
-        if (worldsToDo == null) {
-            worldsToDo = new ArrayList<World>(server.getWorlds());
+        while (true) {
+            boolean result = process();
+            if (Utils.DEBUG) {
+                logger.log(Level.INFO, "process result: " + result);
+            }
+            if (!result) {
+                if (Utils.DEBUG) {
+                    logger.log(Level.INFO, "plugin.isStop() | mobGroup.getSize() <= 0 || mobGroup.getMarkerSet() == nul, return");
+                }
+                return;
+            }
+
+            if (Utils.DEBUG) {
+                logger.log(Level.INFO, "Task complete, wait for next Task, waiting time is: " + mobGroup.getUpdatePeriod());
+            }
+
+            try {
+                Thread.sleep(mobGroup.getUpdatePeriod());
+            } catch (InterruptedException e) {
+            }
         }
-        updateMobsToDo();
+    }
 
-        hideifshadow = plugin.getHideifshadow();
-        hideifundercover = plugin.getHideifundercover();
-        res = plugin.getResolution();
-        int updatesPerTick = mobGroup.getUpdatesPerTick();
-        // Process up to limit per tick
-
-        final int size = mobGroup.getSize();
-        for (int cnt = 0; cnt < updatesPerTick; cnt++) {
-            if (mobIndex >= mobsToDo.size()) {
-                mobsToDo = null;
-                break;
+    private boolean process() {
+        while (true) {
+            if (plugin.isStop() | mobGroup.getSize() <= 0 || mobGroup.getMarkerSet() == null) {
+                return false;
             }
-            // Get next entity
-            LivingEntity le = mobsToDo.get(mobIndex);
-            mobIndex++;
-            int index = getBaseEntryIndex(le);
-            if (index >= size) {
-                continue;
-            }
-            MarkerData data = getMarkerData(le, index);
-            if (data == null) {
-                continue;
+            if (worldsToDo == null) {
+                worldsToDo = new ArrayList<World>(server.getWorlds());
             }
 
-            PutOnMapTask task = new PutOnMapTask(data, le);
-            server.getScheduler().scheduleSyncDelayedTask(plugin, task, 0);
+            boolean result = updateMobsToDo();
+            if (!result) {
+                return true;
+            }
+
+            if (Utils.DEBUG) {
+                logger.log(Level.INFO, "update mobs todo complete: " + mobsToDo);
+            }
+
+            hideifshadow = plugin.getHideifshadow();
+            hideifundercover = plugin.getHideifundercover();
+            res = plugin.getResolution();
+            int updatesPerTick = mobGroup.getUpdatesPerTick();
+            // Process up to limit per tick
+
+            final int size = mobGroup.getSize();
+            for (int cnt = 0; cnt < updatesPerTick; cnt++) {
+                if (mobIndex >= mobsToDo.size()) {
+                    mobsToDo = null;
+                    break;
+                }
+                // Get next entity
+                LivingEntity le = mobsToDo.get(mobIndex);
+                mobIndex++;
+                int index = getBaseEntryIndex(le);
+                if (index >= size) {
+                    continue;
+                }
+                MarkerData data = getMarkerData(le, index);
+                if (data == null) {
+                    continue;
+                }
+
+                result = fillMarkData(le, data);
+                if (!result) {
+                    continue;
+                }
+                server.getScheduler().scheduleSyncDelayedTask(plugin, new PutOnMapTask(data), 0);
+            }
+
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+            }
         }
     }
 
     protected MarkerData getMarkerData(LivingEntity le, int baseIndex) {
         MobMapping mob = mobGroup.getMobAt(baseIndex);
-        MarkerData data = Utils.obtainMarkerData();
+        MarkerData data = MarkerData.obtain();
         data.label = mob.label;
         data.icon = mob.icon;
         return data;
     }
 
-    private boolean putOnTheMap(LivingEntity le, MarkerData data) {
-        String label = data.label;
+    private void putOnTheMap(MarkerData data) {
+
+        final int entryId = data.entryId;
+        final String label = data.label;
+        final String worldName = data.worldName;
+        final double x = data.posX;
+
+        Marker m = getCachedMarker(entryId);
+        if (m == null) { /* Not found?  Need new one */
+            if (Utils.DEBUG) {
+                logger.log(Level.INFO, "not in the cache, create new one: " + label);
+            }
+            m = mobGroup.getMarkerSet().createMarker(singleMakerPrefix + entryId, label, worldName, data.posX, data.posY, data.posZ, data.icon, false);
+        } else {  /* Else, update position if needed */
+            if (Utils.DEBUG) {
+                logger.log(Level.INFO, "in the cache, use cached: " + label);
+            }
+            m.setLocation(worldName, data.posX, data.posY, data.posZ);
+            m.setLabel(label);
+            m.setMarkerIcon(data.icon);
+        }
+        if (m != null) {
+            cacheMaker(entryId, m);
+        }
+    }
+
+    private boolean fillMarkData(LivingEntity le, MarkerData data) {
+        data.worldName = curWorld.getName();
+        data.entryId = le.getEntityId();
 
         Location loc = le.getLocation();
         Block blk = null;
@@ -111,22 +185,15 @@ public class UpdateTask implements Runnable {
         double x = Math.round(loc.getX() / res) * res;
         double y = Math.round(loc.getY() / res) * res;
         double z = Math.round(loc.getZ() / res) * res;
-        Marker m = mobicons.remove(le.getEntityId());
+
         if (mobGroup.isNoLabels()) {
-            label = "";
+            data.label = "";
         } else if (mobGroup.isIncCoord()) {
-            label = label + " [" + (int) x + "," + (int) y + "," + (int) z + "]";
+            data.label = data.label + " [" + (int) x + "," + (int) y + "," + (int) z + "]";
         }
-        if (m == null) { /* Not found?  Need new one */
-            m = mobGroup.getMarkerSet().createMarker(singleMakerPrefix + le.getEntityId(), label, curWorld.getName(), x, y, z, data.icon, false);
-        } else {  /* Else, update position if needed */
-            m.setLocation(curWorld.getName(), x, y, z);
-            m.setLabel(label);
-            m.setMarkerIcon(data.icon);
-        }
-        if (m != null) {
-            newmap.put(le.getEntityId(), m);    /* Add to new map */
-        }
+        data.posX = x;
+        data.posY = y;
+        data.posZ = z;
         return true;
     }
 
@@ -167,27 +234,14 @@ public class UpdateTask implements Runnable {
         return idx;
     }
 
-    private void runNext() {
-        server.getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {
-            @Override
-            public void run() {
-                new Thread(new UpdateTask(plugin, mobGroup)).start();
-            }
-        }, mobGroup.getUpdatePeriod());
-    }
-
-    private void updateMobsToDo() {
+    private boolean updateMobsToDo() {
         while (mobsToDo == null) {
             if (worldsToDo.isEmpty()) {
-                // Now, review old map - anything left is gone
-                for (Marker oldm : mobicons.values()) {
-                    oldm.deleteMarker();
-                }
                 // And replace with new map
-                mobicons = newmap;
+                worldsToDo = null;
+                clearMakerCache();
                 // Schedule next run
-                runNext();
-                return;
+                return false;
             } else {
                 curWorld = worldsToDo.remove(0); // Get next world
                 mobsToDo = curWorld.getLivingEntities();     // Get living entities
@@ -197,23 +251,54 @@ public class UpdateTask implements Runnable {
                 }
             }
         }
+        return true;
+    }
+
+    private void cacheMaker(int id, Marker marker) {
+        synchronized (markerCache) {
+            Marker older = markerCache.get(id);
+            if (older != null && older != marker) {
+                older.deleteMarker();
+            }
+            markerCache.put(id, marker);
+        }
+    }
+
+    private Marker getCachedMarker(int id) {
+        synchronized (markerCache) {
+            return markerCache.get(id);
+        }
+    }
+
+    private void clearMakerCache() {
+        synchronized (markerCache) {
+            int size = markerCache.size();
+            Marker marker;
+            for (int i = 0; i < size; i++) {
+                marker = markerCache.get(i);
+                if (marker != null) {
+                    marker.deleteMarker();
+                }
+            }
+            markerCache.clear();
+        }
     }
 
     private class PutOnMapTask implements Runnable {
         private final MarkerData data;
-        private final LivingEntity le;
 
-        private PutOnMapTask(MarkerData data, LivingEntity le) {
+        private PutOnMapTask(MarkerData data) {
             this.data = data;
-            this.le = le;
         }
 
         @Override
         public void run() {
             try {
-                putOnTheMap(le, data);
+                putOnTheMap(data);
             } finally {
-                Utils.recycleMarkData(data);
+                if (data != null) {
+                    data.recycle();
+                }
             }
         }
     }

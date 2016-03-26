@@ -2,7 +2,10 @@ package org.dynmap.mobs.task;
 
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.*;
-import org.dynmap.mobs.*;
+import org.dynmap.mobs.DynmapMobsPlugin;
+import org.dynmap.mobs.MarkerData;
+import org.dynmap.mobs.MobGroup;
+import org.dynmap.mobs.MobMapping;
 
 public class MobUpdateTask extends UpdateTask {
 
@@ -103,7 +106,7 @@ public class MobUpdateTask extends UpdateTask {
         if (label == null) {
             label = mob.label;
         }
-        MarkerData data = Utils.obtainMarkerData();
+        MarkerData data = MarkerData.obtain();
         data.label = label;
         data.icon = mob.icon;
         return data;

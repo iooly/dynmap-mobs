@@ -6,8 +6,14 @@ import org.bukkit.configuration.Configuration;
 import org.dynmap.markers.MarkerAPI;
 
 import java.lang.reflect.Method;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Utils {
+
+    public static final boolean DEBUG = false;
+
+    public static final ExecutorService THREAD_POOL = Executors.newFixedThreadPool(10);
 
     public static final int TYPE_MOB = 100;
     public static final int TYPE_VEHICLE = 101;
@@ -17,8 +23,6 @@ public class Utils {
 
     public static final MobConfig CONFIG_MOBS;
     public static MobConfig CONFIG_VEHICLES;
-
-    private static final Pools.Pool<MarkerData> MARKER_DATA_POOL;
 
     static {
         CONFIG_MOBS = new MobConfig("mobs.", new MobMapping[]{
@@ -138,20 +142,7 @@ public class Utils {
                 "vehicle"
         ));
 
-        MARKER_DATA_POOL = new Pools.SynchronizedPool<MarkerData>(50);
-    }
 
-    public static MarkerData obtainMarkerData() {
-        MarkerData data = MARKER_DATA_POOL.acquire();
-        return data == null ? new MarkerData() : data;
-    }
-
-    public static void recycleMarkData(MarkerData data) {
-        if (data != null) {
-            data.icon = null;
-            data.label = null;
-            MARKER_DATA_POOL.release(data);
-        }
     }
 
     private static MobConfig getConfigByType(int type) {

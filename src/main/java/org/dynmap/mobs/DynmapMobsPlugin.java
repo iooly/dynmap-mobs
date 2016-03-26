@@ -133,8 +133,8 @@ public class DynmapMobsPlugin extends JavaPlugin {
         mMobsGroup.update();
         mVehiclesGroupl.update();
 
-        new Thread( new MobUpdateTask(this, mMobsGroup)).start();
-        new Thread( new VehicleUpdateTask(this, mMobsGroup)).start();
+        Utils.THREAD_POOL.execute(new MobUpdateTask(this, mMobsGroup));
+        Utils.THREAD_POOL.execute(new VehicleUpdateTask(this, mMobsGroup));
 
         info("version " + this.getDescription().getVersion() + " is activated");
     }
