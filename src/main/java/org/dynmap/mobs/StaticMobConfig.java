@@ -1,8 +1,5 @@
 package org.dynmap.mobs;
 
-/**
- * Created by YeFeNg on 2016/3/26.
- */
 public class StaticMobConfig {
 
     public final String tinyIconsKey;

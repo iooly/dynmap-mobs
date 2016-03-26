@@ -18,6 +18,8 @@ public class Utils {
     public static final MobConfig CONFIG_MOBS;
     public static MobConfig CONFIG_VEHICLES;
 
+    private static final Pools.Pool<MarkerData> MARKER_DATA_POOL;
+
     static {
         CONFIG_MOBS = new MobConfig("mobs.", new MobMapping[]{
                 // Mo'Creatures
@@ -133,6 +135,21 @@ public class Utils {
                 "update.vehicleperiod",
                 "update.vehicles-per-tick"
         ));
+
+        MARKER_DATA_POOL = new Pools.SynchronizedPool<MarkerData>(50);
+    }
+
+    public static MarkerData obtainMarkerData() {
+        MarkerData data = MARKER_DATA_POOL.acquire();
+        return data == null ? new MarkerData() : data;
+    }
+
+    public static void recycleMarkData(MarkerData data) {
+        if (data != null) {
+            data.icon = null;
+            data.label = null;
+            MARKER_DATA_POOL.release(data);
+        }
     }
 
     private static MobConfig getConfigByType(int type) {

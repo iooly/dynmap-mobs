@@ -4,15 +4,15 @@ import org.bukkit.entity.Entity;
 import org.dynmap.markers.MarkerIcon;
 
 /* Mapping of mobs to icons */
-/*package*/ class MobMapping {
-    String mobid;
-    boolean enabled;
-    Class<Entity> mobclass;
-    Class<?> entclass;
-    String cls_id;
-    String entclsid;
-    String label;
-    MarkerIcon icon;
+public class MobMapping {
+    public String mobid;
+    public boolean enabled;
+    public Class<Entity> mobclass;
+    public Class<?> entclass;
+    public String cls_id;
+    public String entclsid;
+    public String label;
+    public MarkerIcon icon;
 
     /*package*/ MobMapping(String id, String clsid, String lbl) {
         this(id, clsid, lbl, null);

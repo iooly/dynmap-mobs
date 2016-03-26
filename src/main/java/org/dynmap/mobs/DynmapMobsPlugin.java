@@ -10,6 +10,8 @@ import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.dynmap.DynmapAPI;
 import org.dynmap.markers.MarkerAPI;
+import org.dynmap.mobs.task.MobUpdateTask;
+import org.dynmap.mobs.task.VehicleUpdateTask;
 
 import java.lang.reflect.Method;
 import java.util.logging.Level;
@@ -128,12 +130,13 @@ public class DynmapMobsPlugin extends JavaPlugin {
         resolution = cfg.getDouble(Keys.UPDATE_RESOLUTION, 1.0);
         setStop(false);
 
-
         mMobsGroup.update();
         mVehiclesGroupl.update();
 
         getServer().getScheduler()
-                .scheduleSyncDelayedTask(this, new UpdateTask(this, mMobsGroup), mMobsGroup.getUpdatePeriod());
+                .scheduleSyncDelayedTask(this, new MobUpdateTask(this, mMobsGroup), mMobsGroup.getUpdatePeriod());
+        getServer().getScheduler()
+                .scheduleSyncDelayedTask(this, new VehicleUpdateTask(this, mMobsGroup), mMobsGroup.getUpdatePeriod());
 
         info("version " + this.getDescription().getVersion() + " is activated");
     }
