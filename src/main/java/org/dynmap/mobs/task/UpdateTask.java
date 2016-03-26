@@ -247,7 +247,9 @@ public abstract class UpdateTask implements Runnable {
                 return false;
             } else {
                 curWorld = worldsToDo.remove(0); // Get next world
-                mobsToDo = curWorld.getLivingEntities();     // Get living entities
+                synchronized (UpdateTask.class) {
+                    mobsToDo = curWorld.getLivingEntities();     // Get living entities
+                }
                 mobIndex = 0;
                 if (mobsToDo != null && mobsToDo.isEmpty()) {
                     mobsToDo = null;
